@@ -19,8 +19,8 @@ namespace Server
         {
             Console.WriteLine($"OnConnected : {endPoint}");
 
-            // 채팅 세션 입장
-            Program.Room.Enter(this);
+            // 채팅 세션 입장 요청
+            Program.Room.Push(() => Program.Room.Enter(this));
 
         }
 
@@ -35,7 +35,8 @@ namespace Server
             SessionManager.Instance.Remove(this);
             if (Room != null)
             {
-                Room.Leave(this);
+                GameRoom room = Room;
+                room.Push(() => room.Leave(this));
                 Room = null;
             }
 
@@ -44,7 +45,7 @@ namespace Server
 
         public override void OnSend(int numOfByte)
         {
-            Console.WriteLine($"Transferred bytes : {numOfByte}");
+            //Console.WriteLine($"Transferred bytes : {numOfByte}");
         }
     }
 }

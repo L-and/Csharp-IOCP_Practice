@@ -13,24 +13,22 @@ namespace ServerCore
         Socket _listenSocket;
         Func<Session> _sessionFactory;
 
-        public void init(IPEndPoint endPoint, Func<Session> sessionFactory)
+        public void init(IPEndPoint endPoint, Func<Session> sessionFactory, int register = 10, int backlog = 100)
         {
             _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _sessionFactory += sessionFactory;
 
             _listenSocket.Bind(endPoint);
 
-            // 소켓을 수신상태로 설정 및 backlog(대기큐의 길이)를 10으로 설정
-            _listenSocket.Listen(10);
+            // 소켓을 수신상태로 설정 및 backlog(대기큐의 길이) 설정
+            _listenSocket.Listen(backlog);
 
-            for(int i=0; i<10; i++)
+            for(int i = 0; i < register; i++)
             {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-
                 // 비동기작업이 완료될 시 호출될 콜백함수(OnAcceptCompleted)를 등록
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
-
-                RegisterAccpet(args); 
+                RegisterAccpet(args);
             }
         }
 
