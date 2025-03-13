@@ -16,7 +16,10 @@ namespace Server
 
         static void Main(string[] args)
         {
+            // 멀티스레드가 동작하기 전 해야할 것들
+            PacketManager.Instance.Register();
 
+            //  
             #region IP 설정
 
             int port = 7777; // 서버 포트설정

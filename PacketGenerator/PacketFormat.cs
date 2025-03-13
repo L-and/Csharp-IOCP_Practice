@@ -8,15 +8,108 @@ namespace PacketGenerator
 {
     class PacketFormat
     {
+        // {0} 패킷 등록
+        public static string managerFormat =
+@"using System;
+using System.Collections.Generic;
+using ServerCore;
+
+class PacketManager
+{{
+    #region Singleton
+    static PacketManager _instance;
+    public static PacketManager Instance
+    {{
+        get
+        {{
+            if (_instance == null)
+                _instance = new PacketManager();
+            return _instance;
+        }}
+    }}
+    #endregion
+
+    // PacketId의 패킷은 어떤 Action을 할지 저장하는 딕셔너리
+    Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>> _onRecv = new Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>>();
+    Dictionary<ushort, Action<PacketSession, IPacket>> _handler = new Dictionary<ushort, Action<PacketSession, IPacket>>();
+
+
+    // _onRecv에 packetId마다 action을 등록
+    public void Register()
+    {{
+{0}
+    }}
+
+    public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer)
+    {{
+        ushort count = 0;
+
+        ushort size = BitConverter.ToUInt16(buffer.Array, buffer.Offset);
+        count += 2;
+        ushort pktId = BitConverter.ToUInt16(buffer.Array, buffer.Offset + count);
+        count += 2;
+
+        Action<PacketSession, ArraySegment<byte>> action = null;
+        if (_onRecv.TryGetValue(pktId, out action))
+            action.Invoke(session, buffer);
+    }}
+
+    // 제네릭 T의 패킷을 조립하는 함수 (T는 IPakcet을 구현하는 놈 이고, new()로 인스턴스 생성이 가능해야 함)
+    void MakePacket<T>(PacketSession session, ArraySegment<byte> buffer) where T : IPacket, new()
+    {{
+        T pkt = new T();
+        pkt.Read(buffer);
+
+        Action<PacketSession, IPacket> action = null;
+        if (_handler.TryGetValue(pkt.Protocol, out action))
+            action.Invoke(session, pkt);
+    }}
+}}";
+
+        // {0} 패킷 이름
+        public static string managerRegisterFormat =
+@"      _onRecv.Add((ushort)PacketID.{0}, MakePacket<{0}>);
+        _handler.Add((ushort)PacketID.{0}, PacketHandler.{0}Handler);";
+
+        // {0} 패킷 이름/번호 목록
+        // {1} 패킷 목록
+        public static string fileFormat =
+@"using ServerCore;
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Text;
+
+public enum PacketID
+{{
+    {0}
+}}
+
+interface IPacket
+{{
+	ushort Protocol {{ get; }}
+	void Read(ArraySegment<byte> segment);
+	ArraySegment<byte> Write();
+}}
+
+{1}";
+        // {0} 패킷 이름
+        // {1} 패킷 번호
+        public static string packetEnumFormat =
+@"{0} = {1},";
+
         // {0} 패킷이름
         // {1} 멤버 변수들
         // {2} 멤버 변수 Read
         // {3} 멤버 변수 Write
         public static string pacektFormat =
 @"
-class {0}
+
+class {0} : IPacket
 {{
     {1}
+
+    public ushort Protocol {{ get {{ return (ushort)PacketID.{0}; }} }}
 
     public void Read(ArraySegment<byte> segment)
     {{
@@ -58,7 +151,7 @@ class {0}
         // {3} 멤버 변수 Read
         // {4} 멤버 변수 Write
         public static string memberListFormat =
-@"public struct {0}
+@"public class {0}
 {{
     {2}
 
@@ -84,6 +177,13 @@ public List<{0}> {1}s = new List<{0}>();";
 count += sizeof({2});";
 
         // {0} 변수 이름
+        // {1} 변수 타입
+        public static string readByteForamt =
+@"this.{0} = ({1})segment.Array[segment.Offset + count];
+count += sizeof({1});";
+
+
+        // {0} 변수 이름
         public static string readStringFormat =
 @"ushort {0}Len = BitConverter.ToUInt16(s.Slice(count, s.Length - count));
 count += sizeof(ushort);
@@ -107,6 +207,11 @@ for(int i=0; i < {1}Len; i++)
         // {1} 변수 타입
         public static string writeFormat =
 @"success &= BitConverter.TryWriteBytes(s.Slice(count, s.Length - count), this.{0});
+count += sizeof({1});";
+        // {0} 변수 이름
+        // {1} 변수 타입
+        public static string writeByteFormat =
+@"segment.Array[segment.Offset + count] = ({1})this.{0};
 count += sizeof({1});";
 
         // {0} 변수 이름
