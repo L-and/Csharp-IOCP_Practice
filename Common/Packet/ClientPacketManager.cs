@@ -5,17 +5,14 @@ using ServerCore;
 class PacketManager
 {
     #region Singleton
-    static PacketManager _instance;
-    public static PacketManager Instance
-    {
-        get
-        {
-            if (_instance == null)
-                _instance = new PacketManager();
-            return _instance;
-        }
-    }
+    static PacketManager _instance = new PacketManager();
+    public static PacketManager Instance { get { return _instance; } }
     #endregion
+
+    PacketManager()
+    {
+        Register();
+    }
 
     // PacketId의 패킷은 어떤 Action을 할지 저장하는 딕셔너리
     Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>> _onRecv = new Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>>();
@@ -25,8 +22,8 @@ class PacketManager
     // _onRecv에 packetId마다 action을 등록
     public void Register()
     {
-      _onRecv.Add((ushort)PacketID.S_Test, MakePacket<S_Test>);
-        _handler.Add((ushort)PacketID.S_Test, PacketHandler.S_TestHandler);
+      _onRecv.Add((ushort)PacketID.S_Chat, MakePacket<S_Chat>);
+        _handler.Add((ushort)PacketID.S_Chat, PacketHandler.S_ChatHandler);
 
     }
 

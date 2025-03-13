@@ -13,13 +13,10 @@ namespace Server
     class Program
     {
         static Listener _listener = new Listener();
+        public static GameRoom Room = new GameRoom();
 
         static void Main(string[] args)
         {
-            // 멀티스레드가 동작하기 전 해야할 것들
-            PacketManager.Instance.Register();
-
-            //  
             #region IP 설정
 
             int port = 7777; // 서버 포트설정
@@ -30,7 +27,7 @@ namespace Server
 
             #endregion
 
-            _listener.init(endPoint, () => { return new ClientSession(); });
+            _listener.init(endPoint, () => { return SessionManager.Instance.Generate(); });
             Console.WriteLine("Listening...");
             while (true)
             {
