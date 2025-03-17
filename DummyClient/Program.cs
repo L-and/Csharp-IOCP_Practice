@@ -21,7 +21,7 @@ namespace DummyClient
 
             Connector connector = new Connector();
 
-            const int DUMMY_COUNT = 500;
+            const int DUMMY_COUNT = 1000;
 
             connector.Connect(endPoint, 
                 () => { return SessionManager.Instance.Generate(); },
@@ -37,7 +37,6 @@ namespace DummyClient
                 {
                     Console.WriteLine(e.ToString());
                 }
-
                 Thread.Sleep(250);
             }
         }

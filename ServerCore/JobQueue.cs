@@ -16,6 +16,8 @@ namespace ServerCore
         object _lock = new object();
         bool _flush = false;
 
+
+        // Push요청시 jobQueue의 모든값을 Flush()하는 방식으로 구현
         public void Push(Action job)
         {
             bool flush = false;

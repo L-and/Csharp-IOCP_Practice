@@ -8,7 +8,7 @@ namespace ServerCore
 {
     public class Connector
     {
-        Func<Session> _sessionFactory;
+        Func<Session> _sessionFactory; 
 
         // count: 등록할 connect세션의 개수 (더미클라 테스트떄 사용)
         public void Connect(IPEndPoint endPoint, Func<Session> sessionFactory, int count = 1)
