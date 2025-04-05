@@ -14,7 +14,7 @@ namespace PacketGenerator
 using System.Collections.Generic;
 using ServerCore;
 
-class PacketManager
+public class PacketManager
 {{
     #region Singleton
     static PacketManager _instance = new PacketManager();
@@ -27,7 +27,7 @@ class PacketManager
     }}
 
     // PacketId의 패킷은 어떤 Action을 할지 저장하는 딕셔너리
-    Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>> _onRecv = new Dictionary<ushort, Action<PacketSession, ArraySegment<byte>>>();
+    Dictionary<ushort, Func<PacketSession, ArraySegment<byte>, IPacket>> _makeFunc = new Dictionary<ushort, Func<PacketSession, ArraySegment<byte>, IPacket>>();
     Dictionary<ushort, Action<PacketSession, IPacket>> _handler = new Dictionary<ushort, Action<PacketSession, IPacket>>();
 
 
@@ -37,7 +37,7 @@ class PacketManager
 {0}
     }}
 
-    public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer)
+    public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer, Action<PacketSession, IPacket> onRecvCallback = null)
     {{
         ushort count = 0;
 
@@ -46,26 +46,40 @@ class PacketManager
         ushort pktId = BitConverter.ToUInt16(buffer.Array, buffer.Offset + count);
         count += 2;
 
-        Action<PacketSession, ArraySegment<byte>> action = null;
-        if (_onRecv.TryGetValue(pktId, out action))
-            action.Invoke(session, buffer);
+        Func<PacketSession, ArraySegment<byte>, IPacket> func = null;
+        if (_makeFunc.TryGetValue(pktId, out func))
+        {{
+            IPacket packet = func.Invoke(session, buffer);
+
+            // 유니티에서는 메인스레드 이외에서 게임오브젝트에 접근하지 못함.
+            // 따라서 패킷이 위 작업을 해야하면 onRecvCallback으로 메인스레드에서 동작하도록 해줌
+            if (onRecvCallback != null)
+                onRecvCallback.Invoke(session, packet);
+            else
+                HandlePacket(session, packet);
+        }}
     }}
 
     // 제네릭 T의 패킷을 조립하는 함수 (T는 IPakcet을 구현하는 놈 이고, new()로 인스턴스 생성이 가능해야 함)
-    void MakePacket<T>(PacketSession session, ArraySegment<byte> buffer) where T : IPacket, new()
+    T MakePacket<T>(PacketSession session, ArraySegment<byte> buffer) where T : IPacket, new()
     {{
         T pkt = new T();
         pkt.Read(buffer);
 
+        return pkt;
+    }}
+
+    public void HandlePacket(PacketSession session, IPacket packet)
+    {{
         Action<PacketSession, IPacket> action = null;
-        if (_handler.TryGetValue(pkt.Protocol, out action))
-            action.Invoke(session, pkt);
+        if (_handler.TryGetValue(packet.Protocol, out action))
+            action.Invoke(session, packet);
     }}
 }}";
 
         // {0} 패킷 이름
         public static string managerRegisterFormat =
-@"      _onRecv.Add((ushort)PacketID.{0}, MakePacket<{0}>);
+@"      _makeFunc.Add((ushort)PacketID.{0}, MakePacket<{0}>);
         _handler.Add((ushort)PacketID.{0}, PacketHandler.{0}Handler);";
 
         // {0} 패킷 이름/번호 목록
@@ -82,7 +96,7 @@ public enum PacketID
     {0}
 }}
 
-interface IPacket
+public interface IPacket
 {{
 	ushort Protocol {{ get; }}
 	void Read(ArraySegment<byte> segment);
@@ -102,7 +116,7 @@ interface IPacket
         public static string pacektFormat =
 @"
 
-class {0} : IPacket
+public class {0} : IPacket
 {{
     {1}
 
@@ -120,7 +134,7 @@ class {0} : IPacket
 
     public ArraySegment<byte> Write()
     {{
-        ArraySegment<byte> segment = SendBufferHelper.Open(4096); 
+        ArraySegment<byte> segment = SendBufferHelper.Open(40960); 
 
         ushort count = 0;
         bool success = true;
